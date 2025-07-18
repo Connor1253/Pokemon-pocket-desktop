@@ -184,11 +184,10 @@ export default function PackOpener() {
                 →
               </button>
               <button
-                onClick={() => router.push('/collection')}
                 className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-500 transition"
                 type="button"
               >
-                View Collection
+                Offering Rates
               </button>
               <button
                 onClick={() => setShowCarousel(false)}
@@ -196,6 +195,12 @@ export default function PackOpener() {
                 type="button"
               >
                 Close Carousel
+              </button>
+              <button
+                className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-500 transition"
+                type="button"
+              >
+                Select other booster packs
               </button>
             </div>
 
