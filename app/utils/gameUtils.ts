@@ -4,6 +4,7 @@ import { Card } from '../types/card';
 export type BoardSlot = {
   card: Card;
   placedTurn: number;
+  energy: number;
 } | null;
 
 export const normalizeStage = (stage?: string) =>

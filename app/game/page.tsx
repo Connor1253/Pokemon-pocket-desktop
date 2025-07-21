@@ -28,6 +28,7 @@ export default function GamePage() {
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [energyUrl, setEnergyUrl] = useState<string | null>(null);
   const [turn, setTurn] = useState(1);
+  const [hasPlacedEnergy, setHasPlacedEnergy] = useState(false)
 
   // Load saved decks from localStorage
   useEffect(() => {
@@ -61,26 +62,54 @@ export default function GamePage() {
     setDraggedIndex(index);
   };
 
+  const handleDropEnergy = (index: number) => {
+    if (hasPlacedEnergy) return;
+  
+    const slot = playerBoard[index];
+    if (!slot) return; // No card at that slot
+  
+    const updatedBoard = [...playerBoard];
+    updatedBoard[index] = {
+      ...slot,
+      energy: (slot.energy || 0) + 1,
+    };
+  
+    setPlayerBoard(updatedBoard);
+    setHasPlacedEnergy(true);
+  };
+
   const handleDrop = (index: number) => {
     if (draggedIndex === null) return;
-
+  
     const cardToPlace = hand[draggedIndex];
     const slot = playerBoard[index];
-
+  
     if (!canPlaceCardAtSlot(cardToPlace, slot, turn)) {
       alert(`You cannot place a ${cardToPlace.stage || 'Basic'} card here yet!`);
       return;
     }
-
+  
     const updatedBoard = [...playerBoard];
-    updatedBoard[index] = { card: cardToPlace, placedTurn: turn };
+    
+    // Preserve existing energy if any, otherwise 0
+    const existingEnergy = slot?.energy || 0;
+  
+    updatedBoard[index] = {
+      card: cardToPlace,
+      placedTurn: turn,
+      energy: existingEnergy,
+    };
+  
     setPlayerBoard(updatedBoard);
-
+  
+    // Remove placed card from hand
     const updatedHand = [...hand];
     updatedHand.splice(draggedIndex, 1);
     setHand(updatedHand);
+  
     setDraggedIndex(null);
   };
+  
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -100,6 +129,7 @@ export default function GamePage() {
 
   const nextTurn = () => {
     setTurn((t) => t + 1);
+    setHasPlacedEnergy(false)
     drawCard();
   };
 
@@ -126,16 +156,17 @@ export default function GamePage() {
 
       {/* Player Board */}
       <GameBoard
-        playerBoard={playerBoard}
-        onDropCard={handleDrop}
-        onDragOver={handleDragOver}
-      />
+  playerBoard={playerBoard}
+  onDropCard={handleDrop}
+  onDropEnergy={handleDropEnergy}  
+  onDragOver={handleDragOver}
+/>
 
       {/* Player Hand, Deck, Energy */}
-      <HandArea hand={hand} onDragStart={handleDragStart} energyUrl={energyUrl} />
+      <HandArea hand={hand} onDragStart={handleDragStart} energyUrl={energyUrl} hasPlacedEnergy={hasPlacedEnergy}/>
 
       {/* Controls */}
-      <GameControls onNextTurn={nextTurn} currentTurn={turn} />
+      <GameControls onNextTurn={nextTurn} currentTurn={turn}/>
     </div>
   );
 }
