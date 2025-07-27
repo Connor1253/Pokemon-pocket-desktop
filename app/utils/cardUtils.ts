@@ -1,4 +1,5 @@
 // /utils/cardUtils.ts
+import type { Card } from '../types/card'; 
 
 export const rarityChances4 = [
     { rarity: 'Crown Rare', chance: 0.0004 },
@@ -47,4 +48,40 @@ export const rarityChances4 = [
     if (rarity === 'Crown Rare') return 'https://static.dotgg.gg/pokepocket/icons/UltraRare.png';
     return `https://static.dotgg.gg/pokepocket/icons/${rarity.replace(/\s+/g, '')}.png`;
   }
+
+  // Attack info parsing & normalization functions
+
+export function parseAttackInfo(info: string): { cost: string; name: string; damage: string } {
+  const match = info.match(/^\{([A-Z]+)\}\s+(.+?)\s+(\d+)$/);
+  if (!match) {
+    throw new Error(`Invalid attack info format: "${info}"`);
+  }
+  const [, cost, name, damage] = match;
+  return { cost, name, damage };
+}
+
+export function normalizeCard(card: Card): Card {
+  if (!card.attack) return card;
+
+  const normalizedAttacks = card.attack.map((atk) => {
+    try {
+      const { cost, name, damage } = parseAttackInfo(atk.info);
+      return {
+        ...atk,
+        cost,
+        name,
+        damage,
+      };
+    } catch {
+      // Parsing failed - return attack as-is
+      return atk;
+    }
+  });
+
+  return {
+    ...card,
+    attack: normalizedAttacks,
+  };
+}
+  
   

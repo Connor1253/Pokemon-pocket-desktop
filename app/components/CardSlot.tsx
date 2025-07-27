@@ -43,6 +43,12 @@ const CardSlot: React.FC<CardSlotProps> = ({
       {slot ? (
         <>
           <CardImage card={slot.card} size={{ width: 70, height: 100 }} showRarity={false} />
+
+          {/* Current HP badge */}
+          <div className="absolute top-1 left-1 bg-red-600 text-white text-xs px-1 rounded shadow">
+            HP: {slot.currentHp ?? (slot.card.hp ? parseInt(slot.card.hp, 10) : '??')}
+          </div>
+
           {slot.energy > 0 && (
             <div className="absolute bottom-1 right-1 bg-black text-xs px-1 rounded shadow">
               ⚡ {slot.energy}
@@ -57,4 +63,5 @@ const CardSlot: React.FC<CardSlotProps> = ({
 };
 
 export default CardSlot;
+
 

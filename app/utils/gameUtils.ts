@@ -5,6 +5,7 @@ export type BoardSlot = {
   card: Card;
   placedTurn: number;
   energy: number;
+  currentHp?: number;
 } | null;
 
 export const normalizeStage = (stage?: string) =>
@@ -55,4 +56,6 @@ export const getRandomEnergyUrl = (energyTypes: string[]): string => {
   return `https://static.dotgg.gg/pokemon/icons/${
     matchedType ? energyTypeMap[matchedType] : 'colorless'
   }.png`;
+  
+  
 };

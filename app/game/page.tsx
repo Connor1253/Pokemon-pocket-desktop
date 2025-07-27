@@ -16,6 +16,7 @@ import {
   canPlaceCardAtSlot,
   getRandomEnergyUrl,
 } from '../utils/gameUtils';
+import { normalizeCard } from '../utils/cardUtils';
 
 export default function GamePage() {
   const router = useRouter();
@@ -47,7 +48,9 @@ export default function GamePage() {
   // Initialize game state when a deck is selected
   useEffect(() => {
     if (selectedDeck) {
-      const shuffled = [...selectedDeck.cards].sort(() => Math.random() - 0.5);
+      const normalizedCards = selectedDeck.cards.map(normalizeCard);
+
+      const shuffled = [...normalizedCards].sort(() => Math.random() - 0.5);
       setHand(shuffled.slice(0, 5));
       setDeck(shuffled.slice(5));
       setPlayerBoard(Array(4).fill(null));
@@ -194,12 +197,12 @@ export default function GamePage() {
       return;
     }
 
-    // Parse damage from attack info (assumes damage number at end)
-    const damageMatch = attack.info.match(/\d+$/);
-    const damage = damageMatch ? parseInt(damageMatch[0], 10) : 0;
-
+    // Use the normalized damage number directly
+    const damage = attack.damage ?? 0;
+    
     // Calculate new HP for opponent's card
     const newHp = (defenderSlot.currentHp ?? (defenderSlot.card.hp ? parseInt(defenderSlot.card.hp, 10) : 0)) - damage;
+    
 
     alert(`${attackerSlot.card.name} attacked ${defenderSlot.card.name} dealing ${damage} damage!`);
 
@@ -217,16 +220,6 @@ export default function GamePage() {
       }
       return newBoard;
     });
-
-    // *** Remove energy reduction, so energy stays the same ***
-    // setPlayerBoard((prev) => {
-    //   const newBoard = [...prev];
-    //   newBoard[0] = {
-    //     ...attackerSlot,
-    //     energy: (attackerSlot.energy ?? 0) - requiredEnergy,
-    //   };
-    //   return newBoard;
-    // });
   };
 
   return (
@@ -276,7 +269,7 @@ export default function GamePage() {
                 className="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700"
                 onClick={() => handleAttackOpponentFrontline(i)}
               >
-                {attack.name} ({attack.info})
+                {attack.cost} {attack.name} {attack.damage}
               </button>
             ))}
           </div>

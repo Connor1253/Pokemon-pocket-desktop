@@ -1,12 +1,23 @@
 export type Card = {
-    id: string;
-    name: string;
-    rarity: string;
-    number: string;
-    setId: string;
-    stage?: string; // 'Basic', 'Stage 1', 'Stage 2' etc.
-    prew_stage_name?: string; // previous evolution name from JSON
-  };
+  id: string;
+  name: string;
+  rarity: string;
+  number: string;
+  setId: string;
+  stage?: string;
+  prew_stage_name?: string;
+  hp?: string;
+  attack?: {
+    info: string;
+    effect: string;
+    cost?: string;
+    name?: string;
+    damage?: string;
+  }[];
+  weakness?: string;
+  retreat?: string;
+};
+
   
   export type SavedDeck = {
     name: string;
