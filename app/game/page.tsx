@@ -31,12 +31,12 @@ export default function GamePage() {
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [energyUrl, setEnergyUrl] = useState<string | null>(null);
   const [turn, setTurn] = useState(1);
+  const [isPlayerTurn, setIsPlayerTurn] = useState(true);
   const [hasPlacedEnergy, setHasPlacedEnergy] = useState(false);
   const [playerDefeatedCount, setPlayerDefeatedCount] = useState(0);
   const [opponentDefeatedCount, setOpponentDefeatedCount] = useState(0);
   const [gameOver, setGameOver] = useState(false);
 
-  // Load saved decks from localStorage
   useEffect(() => {
     const decksStr = localStorage.getItem('savedDecks');
     if (decksStr) {
@@ -45,7 +45,6 @@ export default function GamePage() {
     }
   }, []);
 
-  // Initialize game state when a deck is selected
   useEffect(() => {
     if (selectedDeck) {
       const normalizedCards = selectedDeck.cards.map(normalizeCard);
@@ -56,6 +55,7 @@ export default function GamePage() {
       setPlayerBoard(Array(4).fill(null));
       setDraggedIndex(null);
       setTurn(1);
+      setIsPlayerTurn(true);
 
       if (selectedDeck.energyTypes && selectedDeck.energyTypes.length > 0) {
         const url = getRandomEnergyUrl(selectedDeck.energyTypes);
@@ -64,11 +64,9 @@ export default function GamePage() {
         setEnergyUrl(null);
       }
 
-      // Opponent setup
       const opponentShuffled = [...selectedDeck.cards].sort(() => Math.random() - 0.5);
       setOpponentHand(opponentShuffled);
 
-      // Find first basic card in opponent hand
       const basicCardIndex = opponentShuffled.findIndex(card => card.stage === 'Basic');
       if (basicCardIndex >= 0) {
         const basicCard = opponentShuffled[basicCardIndex];
@@ -80,8 +78,6 @@ export default function GamePage() {
           currentHp: basicCard.hp ? parseInt(basicCard.hp, 10) : 0,
         };
         setOpponentBoard(newOpponentBoard);
-
-        // Remove placed card from opponent hand
         setOpponentHand(prev => prev.filter((_, i) => i !== basicCardIndex));
       } else {
         setOpponentBoard(Array(4).fill(null));
@@ -90,13 +86,12 @@ export default function GamePage() {
   }, [selectedDeck]);
 
   const handleDragStart = (index: number) => {
+    if (!isPlayerTurn) return;
     setDraggedIndex(index);
   };
 
-  
-
   const handleDropEnergy = (index: number) => {
-    if (hasPlacedEnergy) return;
+    if (!isPlayerTurn || hasPlacedEnergy) return;
 
     const slot = playerBoard[index];
     if (!slot) return;
@@ -112,7 +107,7 @@ export default function GamePage() {
   };
 
   const handleDrop = (index: number) => {
-    if (draggedIndex === null) return;
+    if (!isPlayerTurn || draggedIndex === null) return;
 
     const cardToPlace = hand[draggedIndex];
     const slot = playerBoard[index];
@@ -123,8 +118,6 @@ export default function GamePage() {
     }
 
     const updatedBoard = [...playerBoard];
-
-    // Preserve existing energy if any, otherwise 0
     const existingEnergy = slot?.energy || 0;
 
     updatedBoard[index] = {
@@ -134,13 +127,10 @@ export default function GamePage() {
       currentHp: cardToPlace.hp ? parseInt(cardToPlace.hp, 10) : 0,
     };
 
-    setPlayerBoard(updatedBoard);
-
-    // Remove placed card from hand
     const updatedHand = [...hand];
     updatedHand.splice(draggedIndex, 1);
     setHand(updatedHand);
-
+    setPlayerBoard(updatedBoard);
     setDraggedIndex(null);
   };
 
@@ -150,25 +140,67 @@ export default function GamePage() {
 
   const drawCard = () => {
     if (deck.length === 0) return;
-
     const randomIndex = Math.floor(Math.random() * deck.length);
     const cardDrawn = deck[randomIndex];
-
     const newDeck = [...deck];
     newDeck.splice(randomIndex, 1);
     setDeck(newDeck);
     setHand((prevHand) => [...prevHand, cardDrawn]);
   };
 
-  const nextTurn = () => {
-    setTurn((t) => t + 1);
-    setHasPlacedEnergy(false);
-    drawCard();
+  const runOpponentTurn = () => {
+    const newOpponentBoard = [...opponentBoard];
+    const opponentDeck = [...opponentHand];
+    const drawnCard = opponentDeck.pop();
+    if (drawnCard) {
+      setOpponentHand([drawnCard, ...opponentHand]);
+    }
+
+    if (newOpponentBoard[0]?.card?.attack?.[0] && playerBoard[0]) {
+      const attack = newOpponentBoard[0].card.attack[0];
+      const damage = attack.damage ?? 0;
+      const newHp =
+        (playerBoard[0].currentHp ?? parseInt(playerBoard[0].card.hp || '0', 10)) - damage;
+
+      alert(`Opponent's ${newOpponentBoard[0].card.name} attacks for ${damage} damage!`);
+
+      const newPlayerBoard = [...playerBoard];
+      if (newHp <= 0) {
+        alert(`${playerBoard[0].card.name} was defeated!`);
+        newPlayerBoard[0] = null;
+      } else {
+        newPlayerBoard[0] = {
+          ...playerBoard[0],
+          currentHp: newHp,
+        };
+      }
+      setPlayerBoard(newPlayerBoard);
+    }
+
+    setTimeout(() => {
+      setIsPlayerTurn(true);
+      drawCard();
+      setTurn((t) => t + 1);
+    }, 1500);
   };
 
-  // Update: show all attacks next to the player's frontline pokemon
-  // Handle attack on opponent frontline with selected attack index
+  const nextTurn = () => {
+    setHasPlacedEnergy(false);
+    setIsPlayerTurn((prev) => !prev);
+
+    if (isPlayerTurn) {
+      setTimeout(() => {
+        runOpponentTurn();
+      }, 1000);
+    }
+  };
+
   const handleAttackOpponentFrontline = (attackIndex: number) => {
+    if (!isPlayerTurn) {
+      alert("It's not your turn!");
+      return;
+    }
+
     const attackerSlot = playerBoard[0];
     const defenderSlot = opponentBoard[0];
 
@@ -182,8 +214,6 @@ export default function GamePage() {
     }
 
     const attack = attackerSlot.card.attack[attackIndex];
-
-    // Calculate required energy
     const energyMatches = attack.info.match(/\{([A-Z]+)\}/g) || [];
     const requiredEnergy = energyMatches.reduce((sum, token) => {
       const inner = token.replace(/[{}]/g, '');
@@ -197,20 +227,15 @@ export default function GamePage() {
       return;
     }
 
-    // Use the normalized damage number directly
     const damage = attack.damage ?? 0;
-    
-    // Calculate new HP for opponent's card
-    const newHp = (defenderSlot.currentHp ?? (defenderSlot.card.hp ? parseInt(defenderSlot.card.hp, 10) : 0)) - damage;
-    
+    const newHp = (defenderSlot.currentHp ?? parseInt(defenderSlot.card.hp || '0', 10)) - damage;
 
     alert(`${attackerSlot.card.name} attacked ${defenderSlot.card.name} dealing ${damage} damage!`);
 
-    // Update opponent board slot with new HP (remove card if HP <= 0)
     setOpponentBoard((prev) => {
       const newBoard = [...prev];
       if (newHp <= 0) {
-        newBoard[0] = null; // card defeated
+        newBoard[0] = null;
         alert(`${defenderSlot.card.name} was defeated!`);
       } else {
         newBoard[0] = {
@@ -226,6 +251,9 @@ export default function GamePage() {
     <div className="min-h-screen bg-green-100 p-6 space-y-8">
       <NavBar />
       <h1 className="text-3xl font-bold text-center">Game Board</h1>
+      <h2 className="text-xl text-center font-semibold">
+        {isPlayerTurn ? "Your Turn" : "Opponent's Turn"}
+      </h2>
 
       <DeckSelector
         savedDecks={savedDecks}
@@ -233,25 +261,21 @@ export default function GamePage() {
         onSelectDeck={setSelectedDeck}
       />
 
-      {/* Opponent Hand at top */}
       <div className="flex gap-2 justify-center mb-4">
         {opponentHand.map((card, i) => (
           <CardImage key={`opp-hand-${i}`} card={card} faceDown={true} />
         ))}
       </div>
 
-      {/* Opponent Board */}
       <div className="flex flex-col items-center space-y-4">
         <div className="flex gap-4">
           {opponentBoard.slice(1).map((slot, i) => (
             <CardSlot key={`opp-back-${i + 1}`} index={i + 1} slot={slot} isDroppable={false} />
           ))}
         </div>
-        {/* Frontline slot at index 0 */}
         <CardSlot index={0} slot={opponentBoard[0]} isDroppable={false} />
       </div>
 
-      {/* Player Board */}
       <div className="flex flex-col items-center space-y-4">
         <GameBoard
           playerBoard={playerBoard}
@@ -260,7 +284,6 @@ export default function GamePage() {
           onDragOver={handleDragOver}
         />
 
-        {/* Show attacks next to player's frontline card */}
         {playerBoard[0]?.card?.attack && (
           <div className="mt-2 flex gap-2">
             {playerBoard[0].card.attack.map((attack, i) => (
@@ -276,7 +299,6 @@ export default function GamePage() {
         )}
       </div>
 
-      {/* Player Hand, Deck, Energy */}
       <HandArea
         hand={hand}
         onDragStart={handleDragStart}
@@ -284,9 +306,10 @@ export default function GamePage() {
         hasPlacedEnergy={hasPlacedEnergy}
       />
 
-      {/* Controls */}
-      <GameControls onNextTurn={nextTurn} currentTurn={turn} />
+      <GameControls
+        onNextTurn={isPlayerTurn ? nextTurn : undefined}
+        currentTurn={turn}
+      />
     </div>
   );
 }
-
